@@ -65,9 +65,9 @@ button:disabled {
 
 .sorter-setup {
   display: grid;
-  grid-template-columns: minmax(260px, 0.7fr) minmax(0, 1.3fr);
-  gap: 22px;
-  align-items: start;
+  gap: 18px;
+  justify-items: center;
+  text-align: center;
 }
 
 .eyebrow {
@@ -93,6 +93,7 @@ button:disabled {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  justify-content: center;
 }
 
 .sorter-tab {

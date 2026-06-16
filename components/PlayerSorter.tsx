@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 
-import { SorterPlayer, SorterPosition, sorterDataSource, sorterPlayers } from "@/lib/data/sorter-players";
+import { SorterPlayer, SorterPosition, sorterPlayers } from "@/lib/data/sorter-players";
 
 type SorterCategory = "all" | "position-players" | "pitchers" | SorterPosition;
 
@@ -195,11 +195,7 @@ export function PlayerSorter() {
   return (
     <main className="site-shell">
       <section className="sorter-setup">
-        <div>
-          <p className="eyebrow">Baseball Player Sorter</p>
-          <h1>Pick the better player, one matchup at a time.</h1>
-          <p className="muted">{sorterDataSource}</p>
-        </div>
+        <h1>MLB RANKING</h1>
         <div className="sorter-tabs" role="list">
           {categories.map((option) => (
             <button
