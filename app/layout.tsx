@@ -3,8 +3,8 @@ import type { Metadata } from "next";
 import "@/app/globals.css";
 
 export const metadata: Metadata = {
-  title: "Baseball Player Sorter",
-  description: "Rank baseball players through head-to-head choices using Sports Reference stats."
+  title: "Sports Ranking Hub",
+  description: "Choose between MLB rankings and fantasy football tools."
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
