@@ -312,6 +312,25 @@ function FootballChoice({ player, onChoose }: { player: FootballSorterPlayer; on
   );
 }
 
+function csvCell(value: string | number | undefined) {
+  const text = String(value ?? "");
+  return `"${text.replace(/"/g, '""')}"`;
+}
+
+function downloadCsv(filename: string, rows: Array<Array<string | number | undefined>>) {
+  const csv = rows.map((row) => row.map(csvCell).join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
 export function FootballPlayerSorter() {
   const [category, setCategory] = useState<FootballSorterCategory>("all");
   const selectedPlayers = useMemo(() => getPlayersForCategory(category), [category]);
@@ -351,6 +370,26 @@ export function FootballPlayerSorter() {
 
     setHistory((currentHistory) => [...currentHistory, sortState]);
     setSortState((currentState) => recordChoice(currentState, winnerId, opponentId));
+  }
+
+  function saveFinalList() {
+    if (!complete) {
+      return;
+    }
+
+    const categoryLabel = categories.find((option) => option.id === category)?.label ?? "Ranking";
+    const rows: Array<Array<string | number | undefined>> = [
+      ["Rank", "Player", "Team", "Position", "Stats"],
+      ...rankedPlayers.map((player, index) => [
+        index + 1,
+        player.name,
+        getTeamLabel(player),
+        player.position,
+        player.statLine
+      ])
+    ];
+
+    downloadCsv(`nfl-${categoryLabel.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-ranking.csv`, rows);
   }
 
   return (
@@ -439,6 +478,9 @@ export function FootballPlayerSorter() {
             type="button"
           >
             Reset this ranking
+          </button>
+          <button className="ghost-button" disabled={!complete} onClick={saveFinalList} type="button">
+            Save final list
           </button>
         </div>
       </section>

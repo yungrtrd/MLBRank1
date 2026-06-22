@@ -149,6 +149,25 @@ function PlayerChoice({ player, onChoose }: { player: SorterPlayer; onChoose: ()
   );
 }
 
+function csvCell(value: string | number | undefined) {
+  const text = String(value ?? "");
+  return `"${text.replace(/"/g, '""')}"`;
+}
+
+function downloadCsv(filename: string, rows: Array<Array<string | number | undefined>>) {
+  const csv = rows.map((row) => row.map(csvCell).join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
 export function PlayerSorter() {
   const [category, setCategory] = useState<SorterCategory>("all");
   const selectedPlayers = useMemo(() => getPlayersForCategory(category), [category]);
@@ -190,6 +209,28 @@ export function PlayerSorter() {
 
     setHistory((currentHistory) => [...currentHistory, sortState]);
     setSortState((currentState) => recordChoice(currentState, winnerId, opponentId, rankingLimit));
+  }
+
+  function saveFinalList() {
+    if (!complete) {
+      return;
+    }
+
+    const categoryLabel = categories.find((option) => option.id === category)?.label ?? "Ranking";
+    const rows: Array<Array<string | number | undefined>> = [
+      ["Rank", "Player", "Team", "Position", "Slash line", "WAR", "IP"],
+      ...rankedPlayers.map((player, index) => [
+        index + 1,
+        player.name,
+        player.team,
+        player.position,
+        player.slashLine,
+        player.war?.toFixed(1),
+        player.inningsPitched
+      ])
+    ];
+
+    downloadCsv(`mlb-${categoryLabel.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-ranking.csv`, rows);
   }
 
   return (
@@ -278,6 +319,9 @@ export function PlayerSorter() {
             type="button"
           >
             Reset this ranking
+          </button>
+          <button className="ghost-button" disabled={!complete} onClick={saveFinalList} type="button">
+            Save final list
           </button>
         </div>
       </section>

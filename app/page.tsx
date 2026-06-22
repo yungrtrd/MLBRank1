@@ -12,7 +12,7 @@ export default function HomePage() {
         <Link className="section-card baseball-card" href="/baseball">
           <span className="section-mark">MLB</span>
           <span>
-            <strong>Baseball Ranking System</strong>
+            <strong>MLB Ranking</strong>
             <small>Rank MLB players through head-to-head choices.</small>
           </span>
         </Link>
@@ -20,7 +20,7 @@ export default function HomePage() {
         <Link className="section-card football-sorter-card" href="/football-sorter">
           <span className="section-mark">NFL</span>
           <span>
-            <strong>Football Player Sorter</strong>
+            <strong>NFL Ranking</strong>
             <small>Rank quarterbacks, running backs, wide receivers, and tight ends.</small>
           </span>
         </Link>
