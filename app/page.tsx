@@ -24,6 +24,14 @@ export default function HomePage() {
             <small>Start building fantasy football rankings and tools.</small>
           </span>
         </Link>
+
+        <Link className="section-card football-sorter-card" href="/football-sorter">
+          <span className="section-mark">NFL</span>
+          <span>
+            <strong>Football Player Sorter</strong>
+            <small>Rank quarterbacks, running backs, wide receivers, and tight ends.</small>
+          </span>
+        </Link>
       </section>
     </main>
   );

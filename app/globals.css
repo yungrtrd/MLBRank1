@@ -86,7 +86,7 @@ button:disabled {
 
 .section-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 18px;
 }
 
@@ -129,6 +129,12 @@ button:disabled {
     var(--panel);
 }
 
+.football-sorter-card {
+  background:
+    linear-gradient(135deg, rgba(82, 183, 136, 0.16), rgba(130, 177, 255, 0.07)),
+    var(--panel);
+}
+
 .section-mark {
   display: grid;
   width: 74px;
@@ -144,6 +150,11 @@ button:disabled {
 
 .football-card .section-mark {
   background: var(--gold);
+}
+
+.football-sorter-card .section-mark {
+  color: var(--ink);
+  background: #2d6cdf;
 }
 
 .section-card strong {
@@ -414,6 +425,23 @@ button:disabled {
   height: 100%;
   object-fit: contain;
   object-position: bottom center;
+}
+
+.football-choice {
+  min-height: 330px;
+}
+
+.football-avatar {
+  display: grid;
+  width: 118px;
+  height: 118px;
+  color: #041018;
+  font-family: var(--mono);
+  font-size: 2rem;
+  font-weight: 900;
+  background: linear-gradient(135deg, var(--accent), var(--gold));
+  border-radius: 999px;
+  place-items: center;
 }
 
 .sorter-name {
