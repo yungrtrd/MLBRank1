@@ -17,14 +17,6 @@ export default function HomePage() {
           </span>
         </Link>
 
-        <Link className="section-card football-card" href="/fantasy-football">
-          <span className="section-mark">FF</span>
-          <span>
-            <strong>Fantasy Football Section</strong>
-            <small>Start building fantasy football rankings and tools.</small>
-          </span>
-        </Link>
-
         <Link className="section-card football-sorter-card" href="/football-sorter">
           <span className="section-mark">NFL</span>
           <span>
