@@ -7,14 +7,21 @@ import { SorterPlayer, SorterPosition, sorterPlayers } from "@/lib/data/sorter-p
 type SorterCategory = "all" | "position-players" | "pitchers" | SorterPosition;
 
 type SortState = {
+  // IDs already placed into the user's current ordered ranking.
   rankingIds: string[];
+  // IDs still waiting to be inserted into the ranking.
   pendingIds: string[];
+  // Binary-search lower bound for where the current candidate belongs.
   low: number;
+  // Binary-search upper bound for where the current candidate belongs.
   high: number;
+  // Number of head-to-head choices the user has made.
   comparisons: number;
+  // Players skipped because they could not enter a capped ranking, such as the top 100 list.
   skippedCount: number;
 };
 
+// Tabs shown at the top of the MLB sorter.
 const categories: Array<{ id: SorterCategory; label: string }> = [
   { id: "all", label: "All players" },
   { id: "position-players", label: "All position players" },
@@ -36,6 +43,7 @@ const pitcherPositions = new Set<SorterPosition>(["SP", "CP"]);
 const allPlayersPoolSize = 200;
 const allPlayersRankingSize = 100;
 
+// Builds the player pool for the active MLB category.
 function getPlayersForCategory(category: SorterCategory) {
   if (category === "all") {
     return [...sorterPlayers].sort((left, right) => (right.war ?? 0) - (left.war ?? 0)).slice(0, allPlayersPoolSize);
@@ -52,10 +60,12 @@ function getPlayersForCategory(category: SorterCategory) {
   return sorterPlayers.filter((player) => player.position === category);
 }
 
+// Only the all-player MLB mode ranks a top 100 from a larger top-200 pool.
 function getRankingLimit(category: SorterCategory) {
   return category === "all" ? allPlayersRankingSize : undefined;
 }
 
+// Produces a repeatable shuffle so the same category starts in the same order.
 function seededShuffle<T>(items: T[], seedKey: string) {
   let seed = [...seedKey].reduce((total, char) => total + char.charCodeAt(0), 0) || 17;
   const shuffled = [...items];
@@ -69,6 +79,8 @@ function seededShuffle<T>(items: T[], seedKey: string) {
   return shuffled;
 }
 
+// Creates the first sort state by seeding the ranking with one player and
+// leaving every other player as a pending candidate.
 function initializeSort(players: SorterPlayer[], category: SorterCategory): SortState {
   const ids = seededShuffle(
     players.map((player) => player.id),
@@ -85,6 +97,8 @@ function initializeSort(players: SorterPlayer[], category: SorterCategory): Sort
   };
 }
 
+// Places the current pending candidate into the ranking once binary search
+// has found the correct insertion point.
 function insertCandidate(state: SortState, insertIndex: number, rankingLimit?: number): SortState {
   const [candidateId, ...remainingIds] = state.pendingIds;
   const candidateMissedCut = typeof rankingLimit === "number" && insertIndex >= rankingLimit;
@@ -115,6 +129,8 @@ function insertCandidate(state: SortState, insertIndex: number, rankingLimit?: n
   };
 }
 
+// Applies a single head-to-head choice. The candidate is either moved above or
+// below the opponent, narrowing the binary-search range until insertion happens.
 function recordChoice(state: SortState, winnerId: string, opponentId: string, rankingLimit?: number): SortState {
   const candidateId = state.pendingIds[0];
   const midpoint = Math.floor((state.low + state.high) / 2);
@@ -134,6 +150,7 @@ function recordChoice(state: SortState, winnerId: string, opponentId: string, ra
   };
 }
 
+// PlayerChoice is one clickable matchup card in the head-to-head sorter.
 function PlayerChoice({ player, onChoose }: { player: SorterPlayer; onChoose: () => void }) {
   return (
     <button className="sorter-choice" onClick={onChoose} type="button">
@@ -149,11 +166,13 @@ function PlayerChoice({ player, onChoose }: { player: SorterPlayer; onChoose: ()
   );
 }
 
+// Escapes one value for CSV output.
 function csvCell(value: string | number | undefined) {
   const text = String(value ?? "");
   return `"${text.replace(/"/g, '""')}"`;
 }
 
+// Creates and clicks a temporary browser download link for the final CSV.
 function downloadCsv(filename: string, rows: Array<Array<string | number | undefined>>) {
   const csv = rows.map((row) => row.map(csvCell).join(",")).join("\n");
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
@@ -168,6 +187,8 @@ function downloadCsv(filename: string, rows: Array<Array<string | number | undef
   URL.revokeObjectURL(url);
 }
 
+// PlayerSorter owns the MLB ranking flow: active tab, sort state, undo history,
+// matchup rendering, live leaderboard, and final CSV export.
 export function PlayerSorter() {
   const [category, setCategory] = useState<SorterCategory>("all");
   const selectedPlayers = useMemo(() => getPlayersForCategory(category), [category]);
@@ -179,6 +200,7 @@ export function PlayerSorter() {
   const [history, setHistory] = useState<SortState[]>([]);
   const rankingLimit = getRankingLimit(category);
 
+  // Convert ID-based state back into player objects for rendering.
   const rankedPlayers = sortState.rankingIds
     .map((playerId) => playersById.get(playerId))
     .filter((player): player is SorterPlayer => Boolean(player));
@@ -195,6 +217,7 @@ export function PlayerSorter() {
   const showInningsPitched = selectedPlayers.some((player) => pitcherPositions.has(player.position));
   const rankingGoal = rankingLimit ?? selectedPlayers.length;
 
+  // Switching tabs starts a fresh ranking for the newly selected pool.
   function chooseCategory(nextCategory: SorterCategory) {
     const nextPlayers = getPlayersForCategory(nextCategory);
     setCategory(nextCategory);
@@ -202,6 +225,7 @@ export function PlayerSorter() {
     setHistory([]);
   }
 
+  // Saves the current state for Undo, then records the user's matchup winner.
   function chooseWinner(winnerId: string) {
     if (!opponentId || !candidateId) {
       return;
@@ -211,6 +235,7 @@ export function PlayerSorter() {
     setSortState((currentState) => recordChoice(currentState, winnerId, opponentId, rankingLimit));
   }
 
+  // Downloads the completed MLB ranking as a CSV file.
   function saveFinalList() {
     if (!complete) {
       return;

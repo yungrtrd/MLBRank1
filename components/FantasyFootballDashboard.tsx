@@ -21,12 +21,14 @@ type MovementFilter = "all" | MovementType;
 type MovementPosition = "all" | "QB" | "RB" | "WR" | "TE" | "FB" | "Head coach";
 type FantasyPositionFilter = "all" | "QB" | "RB" | "WR" | "TE" | "FB";
 
+// Stat categories used by the season and weekly leaderboard views.
 const categories: Array<{ id: FantasyCategory; label: string; statLabels: string[] }> = [
   { id: "passing", label: "Passing", statLabels: ["passing_yards", "passing_tds", "interceptions"] },
   { id: "rushing", label: "Rushing", statLabels: ["rushing_yards", "rushing_tds", "carries"] },
   { id: "receiving", label: "Receiving", statLabels: ["receiving_yards", "receiving_tds", "receptions"] }
 ];
 
+// Converts data field names into compact table headers.
 const labelMap: Record<string, string> = {
   attempts: "Att",
   average: "Avg",
@@ -49,6 +51,7 @@ const labelMap: Record<string, string> = {
 const movementPositions: MovementPosition[] = ["all", "QB", "RB", "WR", "TE", "FB", "Head coach"];
 const fantasyPositions: FantasyPositionFilter[] = ["all", "QB", "RB", "WR", "TE", "FB"];
 
+// Normalizes undefined and decimal stat values for table display.
 function formatStat(value: string | number | undefined) {
   if (value === undefined || value === null || value === "") {
     return "-";
@@ -59,6 +62,8 @@ function formatStat(value: string | number | undefined) {
   return String(value);
 }
 
+// FantasyFootballDashboard renders the hidden fantasy section. It switches
+// between draft rankings, projections, season totals, weekly leaders, and movement.
 export function FantasyFootballDashboard() {
   const [category, setCategory] = useState<FantasyCategory>("passing");
   const [viewMode, setViewMode] = useState<ViewMode>("draft");
@@ -68,7 +73,9 @@ export function FantasyFootballDashboard() {
   const [positionFilter, setPositionFilter] = useState<FantasyPositionFilter>("all");
   const [selectedProjectionPlayer, setSelectedProjectionPlayer] = useState<string | null>(null);
 
+  // Resolve the active stat category object for the current table.
   const activeCategory = categories.find((item) => item.id === category) ?? categories[0];
+  // Top draft board rows after the optional position filter.
   const draftRows = useMemo(
     () =>
       fantasyDraftRows
@@ -76,6 +83,7 @@ export function FantasyFootballDashboard() {
         .slice(0, 100),
     [positionFilter]
   );
+  // Full-season rows for the selected stat category and position.
   const seasonRows = useMemo(
     () =>
       fantasySeasonRows
@@ -83,6 +91,7 @@ export function FantasyFootballDashboard() {
         .slice(0, 50),
     [category, positionFilter]
   );
+  // Week-specific leaderboard rows for the selected stat category and position.
   const weeklyRows = useMemo(
     () =>
       fantasyWeeklyRows
@@ -95,6 +104,7 @@ export function FantasyFootballDashboard() {
         .slice(0, 50),
     [category, positionFilter, week]
   );
+  // Player/coach movement rows after movement type and position filters.
   const filteredMovementRows = useMemo(
     () =>
       movementRows.filter((row) => {
@@ -106,6 +116,7 @@ export function FantasyFootballDashboard() {
       }),
     [movementPosition, movementType]
   );
+  // Projection rows after the optional position filter.
   const projectionRows = useMemo(
     () =>
       fantasyProjectionRows
@@ -113,6 +124,7 @@ export function FantasyFootballDashboard() {
         .slice(0, 120),
     [positionFilter]
   );
+  // The selected row powers the click-to-open projection detail modal.
   const selectedProjection = selectedProjectionPlayer
     ? fantasyProjectionRows.find((row) => row.player === selectedProjectionPlayer) ?? null
     : null;
@@ -120,6 +132,7 @@ export function FantasyFootballDashboard() {
   const statLeader = viewMode === "draft" ? draftRows[0] : rows[0];
   const movementPlayerCount = filteredMovementRows.filter((row) => row.type === "player").length;
   const movementCoachCount = filteredMovementRows.filter((row) => row.type === "coach").length;
+  // The rightmost KPI changes meaning depending on the active dashboard view.
   const currentLeader =
     viewMode === "movement"
       ? filteredMovementRows[0]?.name
@@ -137,6 +150,7 @@ export function FantasyFootballDashboard() {
       </section>
 
       <section className="fantasy-controls">
+        {/* Primary view switcher for the dashboard. */}
         <div className="sorter-tabs" role="list">
           <button
             className={viewMode === "draft" ? "sorter-tab active" : "sorter-tab"}
@@ -175,6 +189,7 @@ export function FantasyFootballDashboard() {
           </button>
         </div>
 
+        {/* Passing/rushing/receiving filters only apply to stats tables. */}
         {viewMode === "season" || viewMode === "week" ? (
           <div className="sorter-tabs" role="list">
             {categories.map((option) => (
@@ -190,6 +205,7 @@ export function FantasyFootballDashboard() {
           </div>
         ) : null}
 
+        {/* Weekly leaders need a week selector; season totals do not. */}
         {viewMode === "week" ? (
           <label className="week-select">
             <span>Week</span>
@@ -203,6 +219,7 @@ export function FantasyFootballDashboard() {
           </label>
         ) : null}
 
+        {/* Most dashboard views can be filtered by offensive position. */}
         {viewMode !== "movement" ? (
           <label className="week-select">
             <span>Position</span>
@@ -222,6 +239,7 @@ export function FantasyFootballDashboard() {
           </label>
         ) : null}
 
+        {/* Movement has its own filters because it includes players and coaches. */}
         {viewMode === "movement" ? (
           <>
             <div className="sorter-tabs" role="list">
@@ -258,6 +276,7 @@ export function FantasyFootballDashboard() {
       </section>
 
       <section className="fantasy-kpis">
+        {/* KPI cards summarize whatever view is currently active. */}
         <article>
           <strong>
             {viewMode === "movement"
@@ -330,6 +349,7 @@ export function FantasyFootballDashboard() {
           {viewMode === "movement" ? <p className="source-note">{movementSource}</p> : null}
         </div>
         <div className="table-scroll">
+          {/* Draft assistant table shows model scores and model inputs. */}
           {viewMode === "draft" ? (
             <table>
               <thead>
@@ -368,6 +388,7 @@ export function FantasyFootballDashboard() {
               </tbody>
             </table>
           ) : viewMode === "projection" ? (
+            /* Projection table opens a weekly-detail modal when a player is clicked. */
             <>
               <table>
                 <thead>
@@ -413,6 +434,7 @@ export function FantasyFootballDashboard() {
               </table>
             </>
           ) : viewMode === "movement" ? (
+            /* Movement table combines player moves and head-coach changes. */
             <table>
               <thead>
                 <tr>
@@ -440,6 +462,7 @@ export function FantasyFootballDashboard() {
               </tbody>
             </table>
           ) : (
+            /* Season and weekly leaderboards share the same stat-table layout. */
             <table>
               <thead>
                 <tr>
@@ -474,6 +497,7 @@ export function FantasyFootballDashboard() {
         </div>
       </section>
 
+      {/* Projection modal gives the week-by-week breakdown for a selected player. */}
       {selectedProjection ? (
         <div
           aria-label={`${selectedProjection.player} weekly projection`}

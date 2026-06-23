@@ -1,4 +1,5 @@
 :root {
+  /* Shared design tokens used by every route. */
   color-scheme: dark;
   --bg: #08111f;
   --panel: rgba(9, 22, 38, 0.9);
@@ -17,10 +18,12 @@
 }
 
 * {
+  /* Makes fixed dimensions include padding and borders. */
   box-sizing: border-box;
 }
 
 html {
+  /* Full-site background treatment behind every page shell. */
   min-height: 100%;
   background:
     radial-gradient(circle at top left, rgba(55, 179, 107, 0.22), transparent 28%),
@@ -50,6 +53,7 @@ button:disabled {
 }
 
 .site-shell {
+  /* Shared centered shell for the ranking pages. */
   display: grid;
   width: min(var(--max), calc(100% - 32px));
   gap: 18px;
@@ -58,6 +62,7 @@ button:disabled {
 }
 
 .home-shell {
+  /* Centers the home page cards vertically on the first screen. */
   display: grid;
   width: min(980px, calc(100% - 32px));
   min-height: 100vh;
@@ -85,6 +90,7 @@ button:disabled {
 }
 
 .section-grid {
+  /* Home page card layout. Mobile rules later collapse this grid. */
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 18px;
@@ -191,6 +197,7 @@ button:disabled {
 }
 
 .fantasy-shell {
+  /* Dashboard shell for the hidden fantasy football section. */
   display: grid;
   width: min(var(--max), calc(100% - 32px));
   gap: 18px;

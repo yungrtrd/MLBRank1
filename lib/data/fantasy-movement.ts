@@ -1,5 +1,7 @@
+// Offseason movement data used by the NFL sorter and fantasy projection model.
 export type MovementType = "player" | "coach";
 
+// Player movement row. These moves update a player's displayed/current team.
 export type PlayerMovement = {
   type: "player";
   name: string;
@@ -10,6 +12,7 @@ export type PlayerMovement = {
   fantasyNote: string;
 };
 
+// Head-coach movement row. These moves are used as projection context.
 export type CoachMovement = {
   type: "coach";
   name: string;
@@ -20,11 +23,14 @@ export type CoachMovement = {
   fantasyNote: string;
 };
 
+// Union type for the mixed movement table.
 export type MovementRow = PlayerMovement | CoachMovement;
 
+// Human-readable source note displayed in the fantasy movement view.
 export const movementSource =
   "2026 NFL offseason notable player movement and head coaching changes, compiled from the 2026 NFL season movement tracker.";
 
+// Static player and coach movement rows.
 export const movementRows: MovementRow[] = [
   { type: "player", name: "Kirk Cousins", position: "QB", fromTeam: "ATL", toTeam: "LV", moveType: "Free agency", fantasyNote: "Veteran QB change creates a new passing-game baseline for Raiders skill players." },
   { type: "player", name: "Gardner Minshew", position: "QB", fromTeam: "KC", toTeam: "ARI", moveType: "Free agency", fantasyNote: "Depth QB move with possible spot-start relevance." },

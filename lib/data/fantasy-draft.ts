@@ -1,3 +1,5 @@
+// Generated fantasy draft model data used by the NFL sorter and fantasy dashboard.
+// The rows are stored as JSON to keep a large generated dataset compact.
 export type FantasyDraftRow = {
   rank: number;
   player: string;
@@ -18,6 +20,7 @@ export type FantasyDraftRow = {
   draftScore: number;
 };
 
+// Summary metadata describing the draft-score model.
 export const fantasyDraftSummary = {
   "players": 629,
   "model": "Actual full-season PPR points plus opportunity outperformance, weekly yard consistency, target reliability, and production against low-allowance defenses.",

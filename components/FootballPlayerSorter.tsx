@@ -9,11 +9,17 @@ import { PlayerMovement, movementRows } from "@/lib/data/fantasy-movement";
 type FootballSorterCategory = "all" | "QB" | "RB" | "WR" | "TE";
 
 type FootballSortState = {
+  // IDs already placed into the user's current ordered ranking.
   rankingIds: string[];
+  // IDs still waiting to be inserted into the ranking.
   pendingIds: string[];
+  // Binary-search lower bound for where the current candidate belongs.
   low: number;
+  // Binary-search upper bound for where the current candidate belongs.
   high: number;
+  // Number of head-to-head choices the user has made.
   comparisons: number;
+  // Kept for parity with the MLB sorter; NFL currently ranks the full selected pool.
   skippedCount: number;
 };
 
@@ -24,7 +30,7 @@ type FootballSorterPlayer = {
   previousTeam: string;
   changedTeams: boolean;
   moveType?: PlayerMovement["moveType"];
-  position: FootballSorterCategory;
+  position: Exclude<FootballSorterCategory, "all">;
   fantasyPoints: number;
   draftScore: number;
   games: number;
@@ -44,6 +50,7 @@ const categories: Array<{ id: FootballSorterCategory; label: string }> = [
   { id: "TE", label: "Tight ends" }
 ];
 
+// How many depth-chart slots each NFL team contributes by position.
 const depthChartSlotsByPosition: Record<Exclude<FootballSorterCategory, "all">, number> = {
   QB: 1,
   RB: 2,
@@ -51,6 +58,7 @@ const depthChartSlotsByPosition: Record<Exclude<FootballSorterCategory, "all">, 
   TE: 1
 };
 
+// Final target counts for the NFL sorter pool.
 const depthChartPoolTargets: Record<Exclude<FootballSorterCategory, "all">, number> = {
   QB: 32,
   RB: 64,
@@ -58,6 +66,17 @@ const depthChartPoolTargets: Record<Exclude<FootballSorterCategory, "all">, numb
   TE: 32
 };
 
+// Manual depth-chart overrides prevent a backup with more 2025 games/model points
+// from replacing the real starter in the one-player-per-team QB pool.
+const preferredDepthChartPlayers: Partial<
+  Record<string, Partial<Record<Exclude<FootballSorterCategory, "all">, string[]>>>
+> = {
+  WAS: {
+    QB: ["Jayden Daniels"]
+  }
+};
+
+// Sports data exports use a few different abbreviations for the same NFL team.
 const teamAliases: Record<string, string> = {
   GNB: "GB",
   KAN: "KC",
@@ -69,12 +88,15 @@ const teamAliases: Record<string, string> = {
   WSH: "WAS"
 };
 
+// Player movement is keyed by normalized name so punctuation and suffixes do not break matches.
 const playerMoves = new Map(
   movementRows
     .filter((row): row is PlayerMovement => row.type === "player")
     .map((row) => [normalizeName(row.name), row])
 );
 
+// Groups all season stat rows by player so stat-line formatting can quickly
+// find a player's passing, rushing, or receiving totals.
 const seasonRowsByPlayer = fantasySeasonRows.reduce((rowsByPlayer, row) => {
   const playerKey = normalizeName(row.player);
   const playerRows = rowsByPlayer.get(playerKey) ?? [];
@@ -83,6 +105,7 @@ const seasonRowsByPlayer = fantasySeasonRows.reduce((rowsByPlayer, row) => {
   return rowsByPlayer;
 }, new Map<string, FantasySeasonRow[]>());
 
+// Normalizes names for fuzzy matching across data sources.
 function normalizeName(name: string) {
   return name
     .toLowerCase()
@@ -90,14 +113,18 @@ function normalizeName(name: string) {
     .replace(/[^a-z0-9]/g, "");
 }
 
+// Converts data-source team abbreviations into the display abbreviation used by the app.
 function displayTeam(team: string) {
   return teamAliases[team] ?? team;
 }
 
+// Shows team movement in a compact "old to new" form when a player changed teams.
 function getTeamLabel(player: FootballSorterPlayer) {
   return player.changedTeams ? `${player.previousTeam} to ${player.team}` : player.team;
 }
 
+// Finds the most useful season row for a player and stat category. A 2TM row
+// is preferred because it represents the player's full season across teams.
 function getBestSeasonRow(playerName: string, category: FantasySeasonRow["category"]) {
   const playerRows = seasonRowsByPlayer.get(normalizeName(playerName)) ?? [];
   return playerRows
@@ -109,14 +136,17 @@ function getBestSeasonRow(playerName: string, category: FantasySeasonRow["catego
     })[0];
 }
 
+// Safely reads a numeric stat from an optional season row.
 function getStatNumber(row: FantasySeasonRow | undefined, statName: string) {
   return Number(row?.stats[statName] ?? 0);
 }
 
+// Keeps stat display consistent across cards and table rows.
 function formatDecimal(value: number, digits = 1) {
   return value.toFixed(digits);
 }
 
+// Builds the position-specific stat line shown on matchup cards and rankings.
 function formatStatLine(row: FantasyDraftRow) {
   const games = Math.max(row.games, 1);
   const ppg = row.actualPoints / games;
@@ -142,6 +172,7 @@ function formatStatLine(row: FantasyDraftRow) {
   return `${formatDecimal(ppg)} PPG | ${formatDecimal(ypg)} YPG | ${getStatNumber(receiving, "receptions")} rec | ${getStatNumber(receiving, "receiving_tds")} TD`;
 }
 
+// Converts a raw fantasy draft row into the smaller player object used by the sorter.
 function normalizePlayer(row: FantasyDraftRow): FootballSorterPlayer | null {
   if (!["QB", "RB", "WR", "TE"].includes(row.position) || row.team === "2TM") {
     return null;
@@ -159,7 +190,7 @@ function normalizePlayer(row: FantasyDraftRow): FootballSorterPlayer | null {
     previousTeam,
     changedTeams: Boolean(move),
     moveType: move?.moveType,
-    position: row.position as FootballSorterCategory,
+    position: row.position as Exclude<FootballSorterCategory, "all">,
     fantasyPoints: row.actualPoints,
     draftScore: row.draftScore,
     games: row.games,
@@ -176,8 +207,16 @@ const footballPlayers = fantasyDraftRows
   .map(normalizePlayer)
   .filter((player): player is FootballSorterPlayer => Boolean(player));
 
+function getDepthChartPriority(player: FootballSorterPlayer) {
+  const preferredNames = preferredDepthChartPlayers[player.team]?.[player.position] ?? [];
+  const preferredIndex = preferredNames.findIndex((name) => normalizeName(name) === normalizeName(player.name));
+  return preferredIndex === -1 ? Number.POSITIVE_INFINITY : preferredIndex;
+}
+
+// Sorts players within a team/position depth chart using fantasy relevance.
 function compareDepthChartValue(left: FootballSorterPlayer, right: FootballSorterPlayer) {
   return (
+    getDepthChartPriority(left) - getDepthChartPriority(right) ||
     right.draftScore - left.draftScore ||
     right.fantasyPoints - left.fantasyPoints ||
     right.targets - left.targets ||
@@ -185,6 +224,8 @@ function compareDepthChartValue(left: FootballSorterPlayer, right: FootballSorte
   );
 }
 
+// Builds the fixed NFL sorter pool: one QB, two RBs, two WRs, and one TE per
+// current team, then fills any shortfall with the next best players at that position.
 function buildDepthChartPool(players: FootballSorterPlayer[]) {
   const selectedIds = new Set<string>();
   const selectedPlayers: FootballSorterPlayer[] = [];
@@ -227,6 +268,7 @@ function buildDepthChartPool(players: FootballSorterPlayer[]) {
 
 const footballDepthChartPlayers = buildDepthChartPool(footballPlayers);
 
+// Returns the active NFL tab's player pool.
 function getPlayersForCategory(category: FootballSorterCategory) {
   const pool =
     category === "all"
@@ -236,6 +278,7 @@ function getPlayersForCategory(category: FootballSorterCategory) {
   return [...pool].sort((left, right) => right.draftScore - left.draftScore);
 }
 
+// Produces a repeatable shuffle so the same category starts in the same order.
 function seededShuffle<T>(items: T[], seedKey: string) {
   let seed = [...seedKey].reduce((total, char) => total + char.charCodeAt(0), 0) || 17;
   const shuffled = [...items];
@@ -249,6 +292,8 @@ function seededShuffle<T>(items: T[], seedKey: string) {
   return shuffled;
 }
 
+// Creates the first sort state by seeding the ranking with one player and
+// leaving every other player as a pending candidate.
 function initializeSort(players: FootballSorterPlayer[], category: FootballSorterCategory): FootballSortState {
   const ids = seededShuffle(
     players.map((player) => player.id),
@@ -265,6 +310,8 @@ function initializeSort(players: FootballSorterPlayer[], category: FootballSorte
   };
 }
 
+// Places the current pending candidate into the ranking once binary search
+// has found the correct insertion point.
 function insertCandidate(state: FootballSortState, insertIndex: number): FootballSortState {
   const [candidateId, ...remainingIds] = state.pendingIds;
   const rankingIds = [...state.rankingIds];
@@ -280,6 +327,8 @@ function insertCandidate(state: FootballSortState, insertIndex: number): Footbal
   };
 }
 
+// Applies a single head-to-head choice and narrows the current candidate's
+// insertion range until the player can be placed.
 function recordChoice(state: FootballSortState, winnerId: string, opponentId: string): FootballSortState {
   const candidateId = state.pendingIds[0];
   const midpoint = Math.floor((state.low + state.high) / 2);
@@ -299,6 +348,7 @@ function recordChoice(state: FootballSortState, winnerId: string, opponentId: st
   };
 }
 
+// FootballChoice is one clickable matchup card in the head-to-head sorter.
 function FootballChoice({ player, onChoose }: { player: FootballSorterPlayer; onChoose: () => void }) {
   return (
     <button className="sorter-choice football-choice" onClick={onChoose} type="button">
@@ -312,11 +362,13 @@ function FootballChoice({ player, onChoose }: { player: FootballSorterPlayer; on
   );
 }
 
+// Escapes one value for CSV output.
 function csvCell(value: string | number | undefined) {
   const text = String(value ?? "");
   return `"${text.replace(/"/g, '""')}"`;
 }
 
+// Creates and clicks a temporary browser download link for the final CSV.
 function downloadCsv(filename: string, rows: Array<Array<string | number | undefined>>) {
   const csv = rows.map((row) => row.map(csvCell).join(",")).join("\n");
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
@@ -331,6 +383,8 @@ function downloadCsv(filename: string, rows: Array<Array<string | number | undef
   URL.revokeObjectURL(url);
 }
 
+// FootballPlayerSorter owns the NFL ranking flow: active tab, depth-chart pool,
+// sort state, undo history, matchup rendering, live leaderboard, and CSV export.
 export function FootballPlayerSorter() {
   const [category, setCategory] = useState<FootballSorterCategory>("all");
   const selectedPlayers = useMemo(() => getPlayersForCategory(category), [category]);
@@ -341,6 +395,7 @@ export function FootballPlayerSorter() {
   const [sortState, setSortState] = useState(() => initializeSort(selectedPlayers, category));
   const [history, setHistory] = useState<FootballSortState[]>([]);
 
+  // Convert ID-based state back into player objects for rendering.
   const rankedPlayers = sortState.rankingIds
     .map((playerId) => playersById.get(playerId))
     .filter((player): player is FootballSorterPlayer => Boolean(player));
@@ -356,6 +411,7 @@ export function FootballPlayerSorter() {
   const progress = selectedPlayers.length ? Math.round((reviewedCount / selectedPlayers.length) * 100) : 0;
   const rankingGoal = selectedPlayers.length;
 
+  // Switching tabs starts a fresh ranking for the newly selected pool.
   function chooseCategory(nextCategory: FootballSorterCategory) {
     const nextPlayers = getPlayersForCategory(nextCategory);
     setCategory(nextCategory);
@@ -363,6 +419,7 @@ export function FootballPlayerSorter() {
     setHistory([]);
   }
 
+  // Saves the current state for Undo, then records the user's matchup winner.
   function chooseWinner(winnerId: string) {
     if (!opponentId || !candidateId) {
       return;
@@ -372,6 +429,7 @@ export function FootballPlayerSorter() {
     setSortState((currentState) => recordChoice(currentState, winnerId, opponentId));
   }
 
+  // Downloads the completed NFL ranking as a CSV file.
   function saveFinalList() {
     if (!complete) {
       return;

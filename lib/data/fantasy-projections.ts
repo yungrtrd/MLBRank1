@@ -49,8 +49,10 @@ type OffensiveProfile = {
   outperformancePerGame: number;
 };
 
+// Offensive positions included in the projection model.
 const positions: ProjectionPosition[] = ["QB", "RB", "WR", "TE"];
 
+// Normalizes team abbreviations from different data sources.
 const teamAliases: Record<string, string> = {
   ARI: "ARI",
   ATL: "ATL",
@@ -94,10 +96,12 @@ const teamAliases: Record<string, string> = {
   WSH: "WSH"
 };
 
+// Returns the canonical team abbreviation used by the model.
 function normalizeTeam(team: string) {
   return teamAliases[team] ?? team;
 }
 
+// Normalizes player names so initials, punctuation, and suffixes match across files.
 function normalizeName(name: string) {
   return name
     .toLowerCase()
@@ -105,11 +109,13 @@ function normalizeName(name: string) {
     .replace(/[^a-z0-9]/g, "");
 }
 
+// Pulls the opponent abbreviation out of a weekly result string.
 function parseOpponent(result: string) {
   const match = result.match(/\b(?:vs\.|at)\s+([A-Z]{2,3})\b/);
   return match ? normalizeTeam(match[1]) : "NFL";
 }
 
+// Safe average helper that returns 0 for empty samples.
 function average(values: number[]) {
   if (values.length === 0) {
     return 0;
@@ -117,10 +123,12 @@ function average(values: number[]) {
   return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
+// Keeps model adjustment factors inside reasonable limits.
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
+// Converts a defense rank into a readable tier label.
 function tierFromRank(rank: number) {
   if (rank <= 8) {
     return "tough defense";
@@ -134,6 +142,7 @@ function tierFromRank(rank: number) {
   return "friendly defense";
 }
 
+// Converts a similar-player defensive factor into a readable matchup tier.
 function tierFromFactor(factor: number) {
   if (factor <= 0.9) {
     return "tough defense vs similar players";
@@ -147,6 +156,7 @@ function tierFromFactor(factor: number) {
   return "average defense vs similar players";
 }
 
+// Position-specific scales keep the similarity formula balanced across stats.
 function positionScale(position: ProjectionPosition) {
   if (position === "QB") {
     return { opportunity: 12, points: 8, yards: 80, targets: 1, outperformance: 5 };
@@ -160,17 +170,20 @@ function positionScale(position: ProjectionPosition) {
   return { opportunity: 3.5, points: 5, yards: 35, targets: 3, outperformance: 3.5 };
 }
 
+// Creates a deterministic pseudo-bye week from the team abbreviation.
 function byeWeekForTeam(team: string) {
   const hash = team.split("").reduce((sum, char) => sum + char.charCodeAt(0), 0);
   return 5 + (hash % 9);
 }
 
+// Player movement map used to project players on their new teams.
 const playerMoves = new Map(
   movementRows
     .filter((row) => row.type === "player")
     .map((row) => [normalizeName(row.name), { fromTeam: normalizeTeam(row.fromTeam), toTeam: normalizeTeam(row.toTeam) }])
 );
 
+// Coach movement data is reduced to old team and new team context.
 const coachMoves = movementRows
   .filter((row) => row.type === "coach")
   .map((row) => ({
@@ -178,8 +191,10 @@ const coachMoves = movementRows
     toTeam: normalizeTeam(row.toTeam)
   }));
 
+// defenseAverages stores how many fantasy points each defense allowed by position.
 const defenseAverages = new Map<string, Map<ProjectionPosition, number[]>>();
 
+// Build defensive samples from week-by-week fantasy results.
 for (const row of fantasyWeeklyRows) {
   if (!positions.includes(row.position as ProjectionPosition)) {
     continue;
@@ -193,6 +208,7 @@ for (const row of fantasyWeeklyRows) {
   defenseAverages.set(opponent, teamMap);
 }
 
+// defenseRanks ranks teams from toughest to easiest by points allowed at each position.
 const defenseRanks = new Map<string, Map<ProjectionPosition, number>>();
 
 for (const position of positions) {
@@ -208,6 +224,7 @@ for (const position of positions) {
   });
 }
 
+// Weekly player samples connect each performance to an opponent and defensive tier.
 const weeklyByPlayer = new Map<string, WeeklySample[]>();
 
 for (const row of fantasyWeeklyRows) {
@@ -228,16 +245,19 @@ for (const row of fantasyWeeklyRows) {
   weeklyByPlayer.set(playerKey, [...(weeklyByPlayer.get(playerKey) ?? []), sample]);
 }
 
+// Gets all season stat rows for one player and position.
 function getSeasonRows(player: string, position: ProjectionPosition) {
   const playerKey = normalizeName(player);
   return fantasySeasonRows.filter((row) => normalizeName(row.player) === playerKey && row.position === position);
 }
 
+// Gets draft rows for a team's players at one position.
 function getTeamPositionRows(team: string, position: ProjectionPosition) {
   const normalizedTeam = normalizeTeam(team);
   return fantasyDraftRows.filter((row) => normalizeTeam(row.team) === normalizedTeam && row.position === position);
 }
 
+// Estimates opportunity per game using attempts, carries plus targets, or targets.
 function opportunityForPlayer(player: string, position: ProjectionPosition) {
   const rows = getSeasonRows(player, position);
   const games = fantasyDraftRows.find((row) => normalizeName(row.player) === normalizeName(player))?.games ?? 17;
@@ -255,6 +275,7 @@ function opportunityForPlayer(player: string, position: ProjectionPosition) {
   return Number(receiving?.stats.targets ?? 0) / Math.max(games, 1);
 }
 
+// Offensive profiles are the comparable-player fingerprints used by the model.
 const offensiveProfiles: OffensiveProfile[] = fantasyDraftRows
   .filter((row) => positions.includes(row.position as ProjectionPosition) && row.actualPoints > 25)
   .map((row) => {
@@ -273,6 +294,7 @@ const offensiveProfiles: OffensiveProfile[] = fantasyDraftRows
 
 const profilesByKey = new Map(offensiveProfiles.map((profile) => [profile.key, profile]));
 
+// Lower scores mean two offensive players have more similar production and usage.
 function similarityScore(target: OffensiveProfile, comp: OffensiveProfile) {
   if (target.position !== comp.position) {
     return Number.POSITIVE_INFINITY;
@@ -288,6 +310,7 @@ function similarityScore(target: OffensiveProfile, comp: OffensiveProfile) {
   );
 }
 
+// Finds the closest comparable offensive players at the same position.
 function getSimilarProfiles(playerKey: string, position: ProjectionPosition) {
   const target = profilesByKey.get(playerKey);
   if (!target) {
@@ -302,6 +325,8 @@ function getSimilarProfiles(playerKey: string, position: ProjectionPosition) {
     .map((item) => item.profile);
 }
 
+// Measures how similar players performed against a specific opponent. The
+// result becomes a matchup factor for the weekly projection.
 function similarDefenseFactor(playerKey: string, opponent: string, position: ProjectionPosition, fallbackFactor: number) {
   const similarProfiles = getSimilarProfiles(playerKey, position);
   const ratios = similarProfiles.flatMap((profile) => {
@@ -324,6 +349,8 @@ function similarDefenseFactor(playerKey: string, opponent: string, position: Pro
   };
 }
 
+// When a player changes teams, estimate the workload shift by comparing his old
+// opportunity rate to a comparable player on the destination team.
 function getChangedTeamAdjustment(player: string, position: ProjectionPosition, toTeam: string) {
   const oldOpportunity = opportunityForPlayer(player, position);
   if (oldOpportunity <= 0) {
@@ -346,6 +373,8 @@ function getChangedTeamAdjustment(player: string, position: ProjectionPosition, 
   return clamp(comparableOpportunity / oldOpportunity, 0.78, 1.18);
 }
 
+// If a team changed coaches, compare the coach's previous position production
+// against the new team's position production to create a context adjustment.
 function getCoachAdjustment(team: string, position: ProjectionPosition) {
   const coachMove = coachMoves.find((move) => move.toTeam === team);
   if (!coachMove) {
@@ -364,6 +393,8 @@ function getCoachAdjustment(team: string, position: ProjectionPosition) {
   return clamp(oldAverage / newAverage, 0.9, 1.12);
 }
 
+// Produces 18 weekly projections by mixing a player's own tier-based history
+// with similar-player matchup factors against comparable defenses.
 function makeWeeklyProjection(playerKey: string, team: string, baseWeeklyPoints: number, position: ProjectionPosition) {
   const samples = [...(weeklyByPlayer.get(playerKey) ?? [])].sort((a, b) => a.week - b.week);
   const byTier = new Map<string, number[]>();
@@ -415,6 +446,8 @@ function makeWeeklyProjection(playerKey: string, team: string, baseWeeklyPoints:
   return weeks;
 }
 
+// Final projection board. Each row starts from 2025 production, applies team
+// and coach context, projects every week, and then ranks by total points.
 export const fantasyProjectionRows: FantasyProjectionRow[] = fantasyDraftRows
   .filter((row) => positions.includes(row.position as ProjectionPosition) && row.actualPoints > 25)
   .map((row) => {
@@ -465,6 +498,7 @@ export const fantasyProjectionRows: FantasyProjectionRow[] = fantasyDraftRows
   .sort((a, b) => b.projectedPoints - a.projectedPoints)
   .map((row, index) => ({ ...row, rank: index + 1 }));
 
+// Summary text displayed above the projection table.
 export const fantasyProjectionSummary = {
   source:
     "2026 projections use 2025 weekly fantasy results, similar offensive player comps, defense results against those comps, player movement workload comps, and head-coach team context adjustments.",

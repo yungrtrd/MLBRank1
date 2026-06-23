@@ -1,5 +1,8 @@
+// Generated MLB player data used by the baseball sorter.
+// The ranking logic lives in components/PlayerSorter.tsx; this file only stores typed data.
 export type SorterPosition = "C" | "1B" | "2B" | "3B" | "SS" | "LF" | "CF" | "RF" | "DH" | "SP" | "CP";
 
+// One MLB player row after filtering and shaping the Sports Reference exports.
 export type SorterPlayer = {
   id: string;
   name: string;
@@ -14,8 +17,10 @@ export type SorterPlayer = {
   war?: number;
 };
 
+// Human-readable note used to document how the MLB player pool was filtered.
 export const sorterDataSource = "Sports Reference exports: position players with 50+ games; pitchers with 25+ games or 50+ IP";
 
+// Static MLB player pool consumed by the sorter UI.
 export const sorterPlayers: SorterPlayer[] = [
   { id: "pete-crow-armstrong", name: "Pete Crow-Armstrong", team: "CHC", position: "CF", imageUrl: "https://img.mlbstatic.com/mlb-photos/image/upload/w_320,d_people:generic:headshot:silo:current.png,q_auto:best,f_auto/v1/people/0/headshot/67/current", slashLine: ".277 / .351 / .493", games: 73, war: 4.2 },
   { id: "bobby-witt-jr", name: "Bobby Witt Jr.", team: "KCR", position: "SS", imageUrl: "https://img.mlbstatic.com/mlb-photos/image/upload/w_320,d_people:generic:headshot:silo:current.png,q_auto:best,f_auto/v1/people/0/headshot/67/current", slashLine: ".284 / .357 / .450", games: 73, war: 4.0 },

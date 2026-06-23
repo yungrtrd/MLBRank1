@@ -1,5 +1,8 @@
+// Generated fantasy football stat data used by the dashboard, NFL sorter stat
+// lines, and 2026 projection model.
 export type FantasyCategory = "passing" | "rushing" | "receiving";
 
+// One weekly stat row for passing, rushing, or receiving.
 export type FantasyWeeklyRow = {
   category: FantasyCategory;
   week: number;
@@ -12,6 +15,7 @@ export type FantasyWeeklyRow = {
   stats: Record<string, string | number>;
 };
 
+// One full-season stat row for passing, rushing, or receiving.
 export type FantasySeasonRow = {
   category: FantasyCategory;
   rank: number;
@@ -24,8 +28,10 @@ export type FantasySeasonRow = {
   stats: Record<string, number>;
 };
 
+// Scoring rules used to calculate the fantasy point fields.
 export const fantasyScoringNote = "PPR scoring: passing yards 0.04, passing TD 4, INT -2, rushing/receiving yards 0.1, TD 6, reception 1, fumble -2.";
 
+// Summary metadata for the generated weekly and season stat rows.
 export const fantasySummary = {
   "weeks": [
     1,

@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+// HomePage is the public landing page. It intentionally links only to the
+// currently visible ranking tools, while hidden routes can still exist directly.
 export default function HomePage() {
   return (
     <main className="home-shell">
