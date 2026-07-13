@@ -11,6 +11,14 @@ export default function HomePage() {
       </section>
 
       <section className="section-grid" aria-label="Sports sections">
+        <Link className="section-card scouting-card" href="/scouting">
+          <span className="section-mark">REP</span>
+          <span>
+            <strong>Scouting Portfolio</strong>
+            <small>Player evaluations, tool grades, and data visuals for every MLB team.</small>
+          </span>
+        </Link>
+
         <Link className="section-card baseball-card" href="/baseball">
           <span className="section-mark">MLB</span>
           <span>

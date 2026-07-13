@@ -6,9 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "update:rosters": "node scripts/update-mlb-rosters.mjs",
+    "update:player-stats": "node scripts/update-player-stats.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@vercel/analytics": "^2.0.1",
     "next": "15.5.19",
     "react": "19.0.0",
     "react-dom": "19.0.0"

@@ -1,5 +1,7 @@
 # dependencies
 node_modules/
+.venv/
+.cache/
 
 # Next.js
 .next/
