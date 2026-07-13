@@ -15,6 +15,21 @@ const trendSplitOptions = [
   { key: "night", label: "Night" }
 ] as const;
 const trendSeriesColors = ["#06d6a0", "#ffd166", "#ef476f", "#4cc9f0", "#b8f35b"];
+const trendMonthOrder = new Map(
+  ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"].map((month, index) => [month, index + 1])
+);
+
+function getTrendSortValue(label: string, trendMode: "season" | "month") {
+  if (trendMode === "month") {
+    const [month, year] = label.split(" ");
+    const monthNumber = trendMonthOrder.get(month) ?? 0;
+    const yearNumber = Number(year) || 0;
+
+    return yearNumber * 100 + monthNumber;
+  }
+
+  return Number(label) || 0;
+}
 
 const activeRosterTeamByPlayerId = new Map(
   teamRosters.flatMap((roster) => roster.players.map((player) => [player.id, roster.teamId] as const))
@@ -305,7 +320,8 @@ function StatVisuals({ statHistory }: { statHistory: PlayerEvaluation["statHisto
 
           return metric ? { label: row.season, value: parseStatNumber(metric.value), display: metric.value } : undefined;
         })
-        .filter((point): point is { label: string; value: number; display: string } => Boolean(point));
+        .filter((point): point is { label: string; value: number; display: string } => Boolean(point))
+        .sort((first, second) => getTrendSortValue(first.label, trendMode) - getTrendSortValue(second.label, trendMode));
 
       return {
         ...series,
@@ -314,7 +330,9 @@ function StatVisuals({ statHistory }: { statHistory: PlayerEvaluation["statHisto
       };
     })
     .filter((series) => series.points.length > 0);
-  const trendLabels = [...new Set(activeSeries.flatMap((series) => series.points.map((point) => point.label)))];
+  const trendLabels = [...new Set(activeSeries.flatMap((series) => series.points.map((point) => point.label)))].sort(
+    (first, second) => getTrendSortValue(first, trendMode) - getTrendSortValue(second, trendMode)
+  );
   const trendValues = activeSeries.flatMap((series) => series.points.map((point) => point.value));
   const latestTrendPoint = activeSeries[0]?.points.at(-1);
   const maxValue = Math.max(...trendValues, 1);
